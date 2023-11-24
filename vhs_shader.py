@@ -26,10 +26,7 @@ def vhs_filter(frame):
     draw = ImageDraw.Draw(vhs_image)
     # Using a larger font size and loading a custom font if available
     font_size = 20
-    try:
-        font = ImageFont.truetype("fonts/VCR_OSD_MONO.ttf", 20)
-    except IOError:
-        font = ImageFont.load_default().font_variant(size=20)
+    font = ImageFont.truetype("fonts/VCR_OSD_MONO.ttf", 20)
 
     # Formatting the timestamp text
     text = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
