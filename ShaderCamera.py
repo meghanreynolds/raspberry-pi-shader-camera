@@ -176,6 +176,28 @@ def sketchbook_filter(frame):
 
 	return sharpenImage
 
+### EMBOSSED FILTER ###
+def embossed_filter(frame):
+	kernel = np.array([[0, -3, -3],
+                      [3, 0, -3],
+                       [3, 3, 0]]) 
+
+	emboss_img = cv2.filter2D(frame, -1, kernel = kernel)
+
+	return emboss_img
+
+### 8-BIT FILTER ###
+def bit_filter(frame):
+	height, width = frame.shape[:2]
+
+	w, h = (256, 256)
+
+	temp = cv2.resize(frame, (w, h), interpolation = cv2.INTER_LINEAR)
+
+	output = cv2.resize(temp, (width, height), interpolation = cv2.INTER_NEAREST)
+
+	return output
+
 '''
 Video Input/Output Code
 '''
@@ -185,6 +207,8 @@ nightvision_filter_code = "night"
 vhs_filter_code = "vhs"
 blueprint_filter_code = "bp"
 sketchbook_filter_code = "sketch"
+embossed_filter_code = "emboss"
+bit_filter_code = "bit"
 
 # set the video filter
 def get_filter(filter_code):
@@ -198,6 +222,10 @@ def get_filter(filter_code):
 		return vhs_filter
 	elif (filter_code == sketchbook_filter_code):
 		return sketchbook_filter
+	elif (filter_code == embossed_filter_code):
+		return embossed_filter
+	elif (filter_code == bit_filter_code):
+		return bit_filter
 	else:
 		return nil
 
