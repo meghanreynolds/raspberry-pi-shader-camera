@@ -149,6 +149,43 @@ def blueprint_fx(frame):
 	bp_img = np.clip(bp_img, 0, 255)
 	return bp_img
 
+### SKETCHBOOK FILTER ###
+def sketchbook_filter(frame):
+	frame = frame[:,:,0:3]
+	# convert to grayscale
+	grayscale = np.array(np.dot(frame[..., :3], [0.299, 0.587, 0.114]), \
+		dtype = np.uint8)
+	grayscale = np.stack((grayscale,) * 3, axis = -1)
+
+	# invert the image
+	invert_img = 255 - grayscale
+
+	# blur the image
+	blur_img = cv2.GaussianBlur(invert_img, ksize = (0, 0), sigmaX = 5)
+
+	# create the sketchbook filter
+	result = grayscale * 255.0 / (255.0 - blur_img)
+	result[result > 255] = 255
+	result[grayscale == 255] = 255
+	result_img = result.astype('uint8')
+
+	# sharpen the image
+	kernel = np.array([[-1, -1, -1],
+                      [-1, 9, -1],
+                      [-1, -1, -1]])
+    
+	sharpenImage = cv2.filter2D(result_img, -1, kernel)
+
+	return sharpenImage
+
+### EMBOSSED FILTER ###
+def embossed_filter(frame):
+	frame = frame[:,:,0:3]
+	kernel = np.array([[0, -3, -3],
+                      [3, 0, -3],
+                       [3, 3, 0]]) 
+	emboss_img = cv2.filter2D(frame, -1, kernel = kernel)
+	return emboss_img
 
 '''
 Video Input/Output Code
@@ -158,6 +195,9 @@ cartoon_filter_code = "toon"
 nightvision_filter_code = "night"
 vhs_filter_code = "vhs"
 blueprint_filter_code = "bp"
+sketchbook_filter_code = "sketch"
+embossed_filter_code = "emboss"
+
 # set the video filter
 def get_filter(filter_code):
 	if (filter_code == cartoon_filter_code):
@@ -168,6 +208,10 @@ def get_filter(filter_code):
 		return blueprint_fx
 	elif (filter_code == vhs_filter_code):
 		return vhs_filter
+	elif (filter_code == sketchbook_filter_code):
+		return sketchbook_filter
+	elif (filter_code == embossed_filter_code):
+		return embossed_filter
 	else:
 		return nil
 
