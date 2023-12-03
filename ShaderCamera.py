@@ -163,7 +163,7 @@ def cartoon_filter(frame):
 	grayimg = cv2.medianBlur(grayimg, 5)
 	# Get the edges
 	edges = cv2.adaptiveThreshold(grayimg.astype(np.uint8), 255, \
-		cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 5, 5)
+		cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 5)
 	# Convert to a cartoon version
 	color = cv2.bilateralFilter(frame.astype(np.uint8), 9, 250, 250)
 	cartoon = cv2.bitwise_and(color, color, mask=edges)
