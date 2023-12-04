@@ -3,10 +3,11 @@ import datetime # used for vhs tape filter timestamp
 import matplotlib.pyplot as plt # used to display filtered video
 import numpy as np
 from picamera2 import Picamera2, Preview
-from PIL import Image, ImageDraw, ImageFont # used for vhs tape filter
+from PIL import Image, ImageDraw, ImageFont # used for vhs tape filter and retro game filter
 import skimage # used to add gaussian noise
 import sys # used to read in desired filter from command line
 import time # used for sleep funcionality
+import random # used for retro game filter for scores
 
 '''
 Video Feed Filters
@@ -318,6 +319,97 @@ def embossed_filter(frame):
 	emboss_img = cv2.filter2D(frame, -1, kernel = kernel)
 	return emboss_img
 
+### RETRO VIDEO GAME FILTER ###
+# constants for retro video game filter
+font_size_retro = 20
+font_retro_path = "/home/mreynold/raspberry-pi-shader-camera/fonts/Gameplay.ttf"
+font_retro = ImageFont.truetype(font_retro_path, 20)
+coord_x = 10
+coord_y = font_size + 10
+score_locaiton = (10, coord_y)
+score_num_location = (coord_x, coord_y*2)
+level_location = (550, coord_y)
+level_num_location = (550, coord_y*2)
+lives_location = (coord_x, video_size[0] - font_size - 10)
+
+# starting numbers for labels
+score = 1
+level = 1
+life = 5
+
+def retro_game_filter(frame):
+	# convert image to np array
+	np_image = np.array(frame)
+
+	# get the height and width of the image
+	height, width = np_image.shape[:2]
+
+	# desired pixel size
+	w, h = (150, 150)
+
+	# Resize input to "pixelated" size
+	temp = cv2.resize(np_image, (w, h), interpolation = cv2.INTER_LINEAR)
+
+	# initialize the output image
+	np_image = cv2.resize(temp, (width, height), interpolation = cv2.INTER_NEAREST)
+	
+	# Add scanlines: Skip every other line
+	np_image[::2,:,:] = np_image[::2, :, :] * 0.3
+
+	# converting image back to PIL image
+	retro_image = Image.fromarray(np_image.astype('uint8'), 'RGB')
+
+	# adding score, level, and lives labels
+	draw = ImageDraw.Draw(retro_image)
+
+	# labels
+	score_text = "Score:"
+	level_text = "Level:"
+	life_text = "Lives: " + str(life)
+
+	# logic to keep track of the lives, levels and score
+	# score is more than 10 points then it resets to 0 and gain a level and life
+	if score >= 10:
+		level += 1
+		life += 1
+		score = 0
+	# score is less than 0 lose a life and level
+	elif score < 0:
+		# level is under 0 it stays at 0
+		if level <= 0:
+			level = 0
+			# all lives are lost level and score get reset to 0 and lives goes back up to 5
+			if life <= 0:
+				life = 5
+				level = 0
+				score = 0
+			# subtract a life
+			else:
+				life -= 1
+		# subtract a level and life
+		else:
+			level -= 1
+			life -= 1
+		# reset score back to 0
+		score = 0
+
+	# drawing the score	
+	draw.text(score_locaiton, score_text, (255, 255, 255), font=font)
+	draw.text(score_num_location, str(score), (255, 255, 255), font=font)
+	
+	# drawing the level
+	draw.text(level_location, level_text, (255, 255, 255), font=font)
+	draw.text(level_num_location, str(level), (255, 255, 255), font=font)
+
+	# drawing the lifes 
+	draw.text(lives_location, life_text, (255, 255, 255), font=font)
+
+	# randomly generate a number between -3 and 3 to add to the score
+	score = random.randint(-3, 3)
+	score += score
+	
+	return retro_image
+
 ### NO FILTER ###
 def no_filter(frame):
 	return frame[:,:, 0:3]
@@ -332,6 +424,7 @@ vhs_filter_code = "vhs"
 blueprint_filter_code = "bp"
 sketchbook_filter_code = "sketch"
 embossed_filter_code = "emboss"
+retro_game_filter_code = "retro"
 no_filter_code = "none"
 
 # set the video filter
@@ -350,6 +443,8 @@ def get_filter(filter_code):
 		return embossed_filter
 	elif (filter_code == watercolor_filter_code):
 		return watercolor_filter
+	elif (filter_code == retro_game_filter_code):
+		return retro_game_filter
 	elif(filter_code == no_filter_code):
 		return no_filter
 	else:
@@ -360,7 +455,8 @@ def get_filter(filter_code):
 			vhs (vhs filter), 
 			sketch (sketch filter), 
 			emboss (embossed filter), 
-			water (watercolor filter)''')
+			water (watercolor filter),
+			retro (retro game filter)''')
 		exit(0)
 
 index_of_filter = 1
