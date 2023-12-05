@@ -11,14 +11,13 @@
     ```
     git clone https://github.com/meghanreynolds/raspberry-pi-shader-camera.git
     ```
-2. Change lines 176 and 334 of ShaderCamera.py to your absolute path to the corresponding fonts
+2. Change lines 176 and 318 of ShaderCamera.py to your absolute path to the corresponding fonts
 3. Run the Shader Camera:
    ```
    python3 ShaderCamera.py <filter_code>
    ```
    The filter codes are:
    - bp: Blueprint filter
-   - emboss: Embossed filter
    - night: Nightvision filter
    - retro: Retro Videogame filter
    - sketch: Sketchbook filter
