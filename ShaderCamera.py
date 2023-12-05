@@ -186,9 +186,7 @@ recording_dot_y = 10
 # Vhs tape filter
 def vhs_filter(frame):
 	# remove alpha channel
-	frame = frame[:,:,0:3] 
-	# convert image to np array (TODO see if needed now)
-	np_image = np.array(frame)
+	np_image = frame[:,:,0:3] 
 	
 	# Add scanlines: Skip every other line
 	np_image[::2,:,:] = np_image[::2, :, :] * 0.3
@@ -211,7 +209,6 @@ def vhs_filter(frame):
 	text = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 	
 	# Positioning the text at the bottom left corner 
-	# TODO move x and y out of the function
 	draw.text(timestamp_locaiton, text, (255, 255, 255), font=font)
 	
 	# Add recording label
@@ -288,45 +285,32 @@ def blueprint_fx(frame):
 	return bp_img
 
 ### SKETCHBOOK FILTER ###
-# Note: Code was copied from: https://pylessons.com/pencil-sketch 
+# sketchbook filter constants
+sharpening_filter = np.array([[-1, -1, -1],\
+							[-1, 9, -1], \
+							[-1, -1, -1]])
+                      
+# sketchbook filter
 def sketchbook_filter(frame):
+	# clip alpha channel
 	frame = frame[:,:,0:3]
 	# convert to grayscale
-	grayscale = np.array(np.dot(frame[..., :3], [0.299, 0.587, 0.114]), \
-		dtype = np.uint8)
-	grayscale = np.stack((grayscale,) * 3, axis = -1)
-
-	# invert the image
-	invert_img = 255 - grayscale
-
+	grayscale = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
 	# blur the image
-	blur_img = cv2.GaussianBlur(invert_img, ksize = (0, 0), sigmaX = 5)
-
-	# create the sketchbook filter
-	result = grayscale * 255.0 / (255.0 - blur_img)
-	result[result > 255] = 255
-	result[grayscale == 255] = 255
-	result_img = result.astype('uint8')
-
+	blur_img = cv2.GaussianBlur(grayscale, ksize = (0, 0), \
+		sigmaX = 5)
+	
+	# Color Dodge greyscale and blurred image (everything except details
+	# becomes white)
+	# # NOTE: code was heavily adapted from: https://pylessons.com/pencil-sketch 
+	blended = (grayscale * 255.0) / blur_img
+	blended[blended > 255] = 255
+	blended[grayscale == 255] = 255
+	blended = blended.astype('uint8')
+	
 	# sharpen the image
-	kernel = np.array([[-1, -1, -1],
-                      [-1, 9, -1],
-                      [-1, -1, -1]])
-    
-	sharpenImage = cv2.filter2D(result_img, -1, kernel)
-
-	return sharpenImage
-
-### EMBOSSED FILTER ###
-# Note: Filter taken directly from:
-# https://www.kaggle.com/code/ahedjneed/15-image-filters-with-deployment-opencv-streamlit
-def embossed_filter(frame):
-	frame = frame[:,:,0:3]
-	kernel = np.array([[0, -3, -3],
-                      [3, 0, -3],
-                       [3, 3, 0]]) 
-	emboss_img = cv2.filter2D(frame, -1, kernel = kernel)
-	return emboss_img
+	sharpenedImage = cv2.filter2D(blended, -1, sharpening_filter)
+	return sharpenedImage
 
 ### RETRO VIDEO GAME FILTER ###
 # constants for retro video game filter
@@ -356,14 +340,16 @@ def retro_game_filter(frame):
 	# get the height and width of the image
 	height, width = np_image.shape[:2]
 
-	# desired pixel size
+	# NOTE: Lines 345-352 were apated from: 
+	# https://geekyhumans.com/convert-images-to-8-bit-images-using-python
+	# Downsampled image size
 	w, h = (150, 150)
-
-	# Resize input to "pixelated" size
-	temp = cv2.resize(np_image, (w, h), interpolation = cv2.INTER_LINEAR)
-
-	# initialize the output image
-	np_image = cv2.resize(temp, (width, height), interpolation = cv2.INTER_NEAREST)
+	# Downsample image
+	downsampled = cv2.resize(np_image, (w, h), \
+		interpolation = cv2.INTER_LINEAR)
+	# Upsample Downsampled image to get the pixelated 
+	np_image = cv2.resize(downsampled, (width, height), \
+		interpolation = cv2.INTER_NEAREST)
 	
 	# Add scanlines: Skip every other line
 	np_image[::2,:,:] = np_image[::2, :, :] * 0.3
@@ -437,7 +423,6 @@ nightvision_filter_code = "night"
 vhs_filter_code = "vhs"
 blueprint_filter_code = "bp"
 sketchbook_filter_code = "sketch"
-embossed_filter_code = "emboss"
 retro_game_filter_code = "retro"
 no_filter_code = "none"
 
@@ -453,8 +438,6 @@ def get_filter(filter_code):
 		return vhs_filter
 	elif (filter_code == sketchbook_filter_code):
 		return sketchbook_filter
-	elif (filter_code == embossed_filter_code):
-		return embossed_filter
 	elif (filter_code == watercolor_filter_code):
 		return watercolor_filter
 	elif (filter_code == retro_game_filter_code):
@@ -468,20 +451,21 @@ def get_filter(filter_code):
 			bp (blueprint filter), 
 			vhs (vhs filter), 
 			sketch (sketch filter), 
-			emboss (embossed filter), 
 			water (watercolor filter),
-			retro (retro game filter)''')
+			retro (retro game filter),
+			none (unfiltered video feed)''')
 		exit(0)
 
 index_of_filter = 1
-video_filter = get_filter(sys.argv[index_of_filter])
+filter_code = sys.argv[index_of_filter]
+video_filter = get_filter(filter_code)
 # return the next frame (filtered)
 def grab_frame():
 	# get frame from the camera
 	frame = picam.capture_array("main")
 	# return filtered captured frame
 	return video_filter(frame)
-	
+
 # Startup Camera
 picam = Picamera2()
 # Hide preview so that un-filtered video feed is not shown
@@ -493,6 +477,9 @@ time.sleep(3)
 # Note: below code is adapted from:
 # https://stackoverflow.com/questions/45025869/how-to-process-images-in-real-time-and-output-a-real-time-video-of-the-result
 frame_plot = plt.imshow(grab_frame())
+# sketchbook filter results in grayscale output
+if (filter_code == sketchbook_filter_code):
+	frame_plot = plt.imshow(grab_frame(), cmap='gray')
 plt.ion()
 while True:
 	# display the latest filtered frame of the video
